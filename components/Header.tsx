@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 
 const Header: React.FC = () => {
@@ -22,6 +23,7 @@ const Header: React.FC = () => {
               {link.name}
             </a>
           ))}
+           <a href="#/admin/dashboard" className="text-slate-200 hover:text-blue-400 transition-colors duration-300">Admin</a>
         </nav>
         <div className="md:hidden">
           <button onClick={() => setIsOpen(!isOpen)} className="text-white focus:outline-none">
@@ -38,6 +40,7 @@ const Header: React.FC = () => {
                 {link.name}
               </a>
             ))}
+            <a href="#/admin/dashboard" onClick={() => setIsOpen(false)} className="text-slate-200 hover:text-blue-400 transition-colors duration-300 py-2">Admin</a>
           </nav>
         </div>
       )}

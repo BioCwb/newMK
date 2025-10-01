@@ -1,16 +1,26 @@
-import React, { useRef } from 'react';
 
-const initialImages = [
-  'https://picsum.photos/400/300?image=101',
-  'https://picsum.photos/400/300?image=102',
-  'https://picsum.photos/400/300?image=103',
-  'https://picsum.photos/400/300?image=104',
-  'https://picsum.photos/400/300?image=105',
-  'https://picsum.photos/400/300?image=106',
-];
+import React, { useRef, useState, useEffect } from 'react';
+import { db } from '../firebase';
+
+interface GalleryImage {
+  id: string;
+  url: string;
+  name: string;
+}
 
 const Gallery: React.FC = () => {
+  const [images, setImages] = useState<GalleryImage[]>([]);
   const scrollContainer = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const galleryRef = db.ref('gallery');
+    const listener = galleryRef.on('value', (snapshot) => {
+      const data = snapshot.val();
+      const loadedImages: GalleryImage[] = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+      setImages(loadedImages.reverse());
+    });
+    return () => galleryRef.off('value', listener);
+  }, []);
 
   const scroll = (scrollOffset: number) => {
     if (scrollContainer.current) {
@@ -33,16 +43,18 @@ const Gallery: React.FC = () => {
           </button>
           
           <div ref={scrollContainer} className="flex overflow-x-auto space-x-6 py-4 scrollbar-hide">
-            {initialImages.map((src, index) => (
-              <div key={index} className="flex-shrink-0 w-80 h-60 rounded-lg overflow-hidden shadow-lg group">
+            {images.length > 0 ? images.map((image, index) => (
+              <div key={image.id} className="flex-shrink-0 w-80 h-60 rounded-lg overflow-hidden shadow-lg group">
                 <img 
-                  src={src} 
-                  alt={`Projeto ${index + 1}`} 
+                  src={image.url} 
+                  alt={image.name || `Projeto ${index + 1}`} 
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   loading="lazy"
                 />
               </div>
-            ))}
+            )) : (
+              <p className="w-full text-center text-slate-500">Nenhuma imagem na galeria ainda.</p>
+            )}
           </div>
           
           <button 

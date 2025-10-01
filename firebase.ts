@@ -1,7 +1,8 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getDatabase } from "firebase/database";
-import { getStorage } from "firebase/storage";
+// Fix: Use firebase/compat imports for v8 compatibility to resolve missing export errors.
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/database';
+import 'firebase/compat/storage';
+import 'firebase/compat/auth';
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -17,6 +18,12 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-export const db = getDatabase(app);
-export const storage = getStorage(app);
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
+// Fix: Use v8 compat API style for service exports.
+export const db = firebase.database();
+export const storage = firebase.storage();
+export const auth = firebase.auth();
+export { firebase }; // Export firebase namespace for types like firebase.User
