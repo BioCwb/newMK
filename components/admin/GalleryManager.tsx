@@ -13,6 +13,7 @@ const GalleryManager: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -26,14 +27,28 @@ const GalleryManager: React.FC = () => {
   }, []);
   
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+    setUploadError(null);
+    const file = e.target.files?.[0];
+
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setUploadError('Formato de arquivo inválido. Por favor, selecione um arquivo de imagem (ex: JPEG, PNG).');
+        setSelectedFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+      setSelectedFile(file);
+    } else {
+        setSelectedFile(null);
     }
   };
 
   const handleUploadClick = () => {
     if (!selectedFile) return;
 
+    setUploadError(null);
     setIsUploading(true);
     setUploadProgress(0);
     const file = selectedFile;
@@ -49,7 +64,7 @@ const GalleryManager: React.FC = () => {
       },
       (error) => {
         console.error("Error uploading image:", error);
-        alert(`Falha no upload: ${error.message}`);
+        setUploadError(`Falha no upload: ${error.message}`);
         setIsUploading(false);
         setSelectedFile(null);
         if (fileInputRef.current) {
@@ -71,12 +86,12 @@ const GalleryManager: React.FC = () => {
               }
           }).catch((dbError) => {
               console.error("Error saving to database:", dbError);
-              alert(`Falha ao salvar no banco de dados: ${dbError.message}`);
+              setUploadError(`Falha ao salvar no banco de dados: ${dbError.message}`);
               setIsUploading(false);
           });
         }).catch((urlError) => {
             console.error("Error getting download URL:", urlError);
-            alert(`Falha ao obter URL da imagem: ${urlError.message}`);
+            setUploadError(`Falha ao obter URL da imagem: ${urlError.message}`);
             setIsUploading(false);
         });
       }
@@ -124,6 +139,9 @@ const GalleryManager: React.FC = () => {
                 {isUploading ? `Enviando ${Math.round(uploadProgress)}%...` : 'Upload'}
               </button>
            </div>
+           {uploadError && (
+             <p className="text-red-500 text-sm mt-4">{uploadError}</p>
+           )}
            {isUploading && (
              <div className="w-full bg-slate-200 rounded-full h-2.5 mt-4">
                 <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-150" style={{width: `${uploadProgress}%`}}></div>
