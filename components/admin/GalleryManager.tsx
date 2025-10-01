@@ -16,6 +16,8 @@ const GalleryManager: React.FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [imageToDelete, setImageToDelete] = useState<GalleryImage | null>(null);
 
   useEffect(() => {
     const galleryRef = db.ref('gallery');
@@ -102,8 +104,17 @@ const GalleryManager: React.FC = () => {
     );
   };
 
-  const handleDeleteImage = (image: GalleryImage) => {
+  const handleDeleteClick = (image: GalleryImage) => {
+    setImageToDelete(image);
+    setIsModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (!imageToDelete) return;
+    
     setSuccessMessage('');
+    const image = imageToDelete;
+
     const removeDbEntry = () => {
       db.ref(`gallery/${image.id}`).remove()
         .then(() => {
@@ -129,7 +140,16 @@ const GalleryManager: React.FC = () => {
         } else {
           setUploadError('Falha ao deletar o arquivo da foto.');
         }
+      })
+      .finally(() => {
+        setIsModalOpen(false);
+        setImageToDelete(null);
       });
+  };
+
+  const cancelDelete = () => {
+    setIsModalOpen(false);
+    setImageToDelete(null);
   };
 
   return (
@@ -183,7 +203,7 @@ const GalleryManager: React.FC = () => {
               <div key={image.id} className="flex items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
                 <img src={image.url} alt={image.name} className="w-16 h-16 object-cover rounded-md mr-4"/>
                 <span className="text-slate-700 font-medium truncate flex-grow">{image.name}</span>
-                <button onClick={() => handleDeleteImage(image)} className="ml-4 bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-4 rounded-md text-sm transition-colors">
+                <button onClick={() => handleDeleteClick(image)} className="ml-4 bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-4 rounded-md text-sm transition-colors">
                   Delete
                 </button>
               </div>
@@ -192,6 +212,31 @@ const GalleryManager: React.FC = () => {
             )}
           </div>
         </div>
+
+        {isModalOpen && imageToDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md text-center">
+              <h3 id="modal-title" className="text-xl font-bold text-slate-800 mb-4">Confirmar Exclusão</h3>
+              <p className="text-slate-600 mb-6">
+                Tem certeza que deseja deletar a imagem "<span className="font-semibold">{imageToDelete.name}</span>"? Essa ação não pode ser desfeita.
+              </p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={cancelDelete}
+                  className="px-6 py-2 rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                >
+                  Deletar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 };
