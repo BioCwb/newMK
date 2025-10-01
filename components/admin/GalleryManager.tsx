@@ -13,6 +13,7 @@ const GalleryManager: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -28,8 +29,34 @@ const GalleryManager: React.FC = () => {
     });
     return () => galleryRef.off('value', listener);
   }, []);
+
+  // Effect to clean up the object URL to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  const handleCancelSelection = () => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setSelectedFile(null);
+    setImagePreview(null);
+    setUploadError(null);
+    setUploadProgress(0);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
   
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Clean up previous preview before creating a new one
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
     setUploadError(null);
     const file = e.target.files?.[0];
 
@@ -37,14 +64,17 @@ const GalleryManager: React.FC = () => {
       if (!file.type.startsWith('image/')) {
         setUploadError('Formato de arquivo inválido. Por favor, selecione um arquivo de imagem (ex: JPEG, PNG).');
         setSelectedFile(null);
+        setImagePreview(null);
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
         return;
       }
       setSelectedFile(file);
+      setImagePreview(URL.createObjectURL(file)); // Create preview URL
     } else {
         setSelectedFile(null);
+        setImagePreview(null);
     }
   };
 
@@ -70,10 +100,7 @@ const GalleryManager: React.FC = () => {
         console.error("Error uploading image:", error);
         setUploadError(`Falha no upload: ${error.message}`);
         setIsUploading(false);
-        setSelectedFile(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
+        // Do not reset selection, allow user to retry
       },
       () => {
         uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
@@ -86,10 +113,7 @@ const GalleryManager: React.FC = () => {
               setSuccessMessage('Foto enviada com sucesso!');
               setTimeout(() => setSuccessMessage(''), 3000);
               setIsUploading(false);
-              setSelectedFile(null);
-              if (fileInputRef.current) {
-                  fileInputRef.current.value = '';
-              }
+              handleCancelSelection(); // Reset form on success
           }).catch((dbError) => {
               console.error("Error saving to database:", dbError);
               setUploadError(`Falha ao salvar no banco de dados: ${dbError.message}`);
@@ -155,39 +179,63 @@ const GalleryManager: React.FC = () => {
   return (
     <div>
         {successMessage && (
-          <div className="mb-6 p-4 bg-green-100 border border-green-300 text-green-800 rounded-lg shadow" role="alert">
-            <div className="flex items-center">
-              <i className="fas fa-check-circle mr-3 text-green-600"></i>
-              <span>{successMessage}</span>
-            </div>
+          <div className="fixed top-24 right-8 z-50 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded-lg shadow-lg flex items-center" role="alert">
+            <i className="fas fa-check-circle mr-3 text-lg"></i>
+            <span className="font-medium">{successMessage}</span>
           </div>
         )}
         <div className="bg-white p-8 rounded-xl shadow-lg mb-10">
            <h2 className="text-2xl font-bold text-slate-800 mb-6">Upload Foto</h2>
-           <div className="flex items-center space-x-4">
-              <label htmlFor="file-upload" className="cursor-pointer bg-white border border-slate-300 text-slate-700 py-2 px-4 rounded-md hover:bg-slate-50 transition-colors">
-                Escolher Arquivo
-              </label>
-              <input 
-                id="file-upload" 
-                type="file" 
-                ref={fileInputRef}
-                className="hidden" 
-                accept="image/*" 
-                onChange={handleFileSelect} 
-                disabled={isUploading}
-              />
-              <span className="text-slate-500 text-sm truncate">{selectedFile ? selectedFile.name : 'Nenhum arquivo escolhido'}</span>
-              <button 
-                onClick={handleUploadClick} 
-                disabled={!selectedFile || isUploading}
-                className="ml-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
-              >
-                {isUploading ? `Enviando ${Math.round(uploadProgress)}%...` : 'Upload'}
-              </button>
-           </div>
+           
+           {!imagePreview ? (
+              <div>
+                <label htmlFor="file-upload" className="relative block w-full border-2 border-dashed border-slate-300 rounded-lg p-12 text-center cursor-pointer hover:border-blue-500 transition-colors">
+                  <div className="flex flex-col items-center justify-center">
+                    <i className="fas fa-cloud-upload-alt text-4xl text-slate-400 mb-2"></i>
+                    <span className="font-semibold text-slate-600">Escolher uma imagem</span>
+                    <span className="text-xs text-slate-400 mt-1">PNG, JPG, GIF, etc.</span>
+                  </div>
+                  <input 
+                    id="file-upload" 
+                    type="file" 
+                    ref={fileInputRef}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                    accept="image/*" 
+                    onChange={handleFileSelect} 
+                    disabled={isUploading}
+                  />
+                </label>
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="mb-4">
+                  <p className="font-semibold text-slate-700 mb-2">Pré-visualização:</p>
+                  <div className="relative inline-block border border-slate-200 rounded-lg p-2 shadow-sm bg-slate-50">
+                    <img src={imagePreview} alt="Pré-visualização" className="w-auto h-auto object-contain rounded-md max-h-60" />
+                  </div>
+                </div>
+                <p className="text-slate-600 text-sm truncate mb-4" title={selectedFile?.name}>{selectedFile?.name}</p>
+                <div className="flex justify-center items-center space-x-4">
+                  <button 
+                    onClick={handleCancelSelection}
+                    disabled={isUploading}
+                    className="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={handleUploadClick} 
+                    disabled={!selectedFile || isUploading}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
+                  >
+                    {isUploading ? `Enviando ${Math.round(uploadProgress)}%...` : 'Confirmar e Enviar'}
+                  </button>
+                </div>
+              </div>
+            )}
+
            {uploadError && (
-             <p className="text-red-500 text-sm mt-4">{uploadError}</p>
+             <p className="text-red-500 text-sm mt-4 text-center">{uploadError}</p>
            )}
            {isUploading && (
              <div className="w-full bg-slate-200 rounded-full h-2.5 mt-4">

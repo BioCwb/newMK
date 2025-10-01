@@ -52,11 +52,9 @@ const TestimonialsManager: React.FC = () => {
   return (
     <div>
       {successMessage && (
-          <div className="mb-6 p-4 bg-green-100 border border-green-300 text-green-800 rounded-lg shadow" role="alert">
-            <div className="flex items-center">
-              <i className="fas fa-check-circle mr-3 text-green-600"></i>
-              <span>{successMessage}</span>
-            </div>
+          <div className="fixed top-24 right-8 z-50 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded-lg shadow-lg flex items-center" role="alert">
+            <i className="fas fa-check-circle mr-3 text-lg"></i>
+            <span className="font-medium">{successMessage}</span>
           </div>
         )}
       <div className="bg-white p-8 rounded-xl shadow-lg mb-10">
