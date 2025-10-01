@@ -1,33 +1,16 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { ref, onValue } from 'firebase/database';
+import React, { useRef } from 'react';
 
-interface GalleryImage {
-  id: string;
-  url: string;
-}
+const initialImages = [
+  'https://picsum.photos/400/300?image=101',
+  'https://picsum.photos/400/300?image=102',
+  'https://picsum.photos/400/300?image=103',
+  'https://picsum.photos/400/300?image=104',
+  'https://picsum.photos/400/300?image=105',
+  'https://picsum.photos/400/300?image=106',
+];
 
 const Gallery: React.FC = () => {
-  const [images, setImages] = useState<GalleryImage[]>([]);
   const scrollContainer = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const galleryRef = ref(db, 'gallery');
-    const unsubscribe = onValue(galleryRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const imageList = Object.keys(data).map(key => ({
-          id: key,
-          url: data[key].url
-        }));
-        setImages(imageList);
-      } else {
-        setImages([]);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   const scroll = (scrollOffset: number) => {
     if (scrollContainer.current) {
@@ -50,18 +33,16 @@ const Gallery: React.FC = () => {
           </button>
           
           <div ref={scrollContainer} className="flex overflow-x-auto space-x-6 py-4 scrollbar-hide">
-            {images.length > 0 ? images.map((image) => (
-              <div key={image.id} className="flex-shrink-0 w-80 h-60 rounded-lg overflow-hidden shadow-lg group">
+            {initialImages.map((src, index) => (
+              <div key={index} className="flex-shrink-0 w-80 h-60 rounded-lg overflow-hidden shadow-lg group">
                 <img 
-                  src={image.url} 
-                  alt={`Projeto`} 
+                  src={src} 
+                  alt={`Projeto ${index + 1}`} 
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   loading="lazy"
                 />
               </div>
-            )) : (
-              <p className="text-slate-500 text-center w-full">Nenhuma imagem na galeria ainda.</p>
-            )}
+            ))}
           </div>
           
           <button 
