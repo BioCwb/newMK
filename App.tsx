@@ -32,14 +32,14 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Effect to handle routing guards and redirects based on auth state and route
+  // Effect to handle routing guards and redirects based on auth state and route.
+  // This ensures the URL is always correct according to the authentication state.
   useEffect(() => {
-    // Don't perform redirects until the initial auth check is complete
     if (loading) {
       return;
     }
 
-    const isAdminRoute = route.startsWith('#/admin');
+    const isAdminRoute = route.startsWith('#/admin/');
     const isLoginPage = route === '#/admin/login';
 
     // Guard 1: If a non-authenticated user tries to access a protected admin route, redirect to login.
@@ -53,21 +53,18 @@ const App: React.FC = () => {
     }
   }, [user, route, loading]);
   
-  const renderContent = () => {
+  const renderAppContent = () => {
     if (loading) {
-      return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+      return <div className="flex-grow flex items-center justify-center">Carregando...</div>;
     }
 
-    const isAdminRoute = route.startsWith('#/admin');
-    const isLoginPage = route === '#/admin/login';
+    const isAdminRoute = route.startsWith('#/admin/');
 
     if (isAdminRoute) {
-      if (isLoginPage) {
-        // Only show login page if the user is not logged in.
-        return user ? null : <LoginPage />;
-      }
-      // For any other admin route, show the dashboard if the user is logged in.
-      return user ? <AdminDashboard route={route} /> : null;
+      // Proactively render the correct component based on auth state.
+      // The useEffect above will handle correcting the URL in the background.
+      // This prevents flashes of incorrect content or blank screens.
+      return user ? <AdminDashboard route={route} /> : <LoginPage />;
     }
 
     // Default to showing the public site content
@@ -88,7 +85,7 @@ const App: React.FC = () => {
   return (
     <div className="bg-slate-50 text-slate-700 min-h-screen flex flex-col">
        <Header />
-       {renderContent()}
+       {renderAppContent()}
     </div>
   );
 };
