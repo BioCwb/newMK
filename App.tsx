@@ -16,50 +16,61 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [route, setRoute] = useState(window.location.hash || '#home');
 
+  // Effect to listen for hash changes and update the route state
   useEffect(() => {
     const handleHashChange = () => setRoute(window.location.hash || '#home');
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  // Effect to listen for authentication state changes from Firebase
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
       setLoading(false);
-      
-      const currentHash = window.location.hash;
-      const isAdminRoute = currentHash.startsWith('#/admin');
-      const isLoginPage = currentHash === '#/admin/login';
-
-      // Guard 1: Not logged in on a protected admin page -> redirect to login
-      if (!currentUser && isAdminRoute && !isLoginPage) {
-          window.location.hash = '#/admin/login';
-      }
-
-      // Guard 2: Logged in but on the login page -> redirect to dashboard
-      if (currentUser && isLoginPage) {
-          window.location.hash = '#/admin/dashboard';
-      }
     });
     return () => unsubscribe();
   }, []);
+
+  // Effect to handle routing guards and redirects based on auth state and route
+  useEffect(() => {
+    // Don't perform redirects until the initial auth check is complete
+    if (loading) {
+      return;
+    }
+
+    const isAdminRoute = route.startsWith('#/admin');
+    const isLoginPage = route === '#/admin/login';
+
+    // Guard 1: If a non-authenticated user tries to access a protected admin route, redirect to login.
+    if (!user && isAdminRoute && !isLoginPage) {
+        window.location.hash = '#/admin/login';
+    }
+
+    // Guard 2: If an authenticated user is on the login page, redirect them to the dashboard.
+    if (user && isLoginPage) {
+        window.location.hash = '#/admin/dashboard';
+    }
+  }, [user, route, loading]);
   
   const renderContent = () => {
     if (loading) {
-      return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+      return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
     }
 
-    if (route === '#/admin/login') {
-      // Show login page only if not authenticated; otherwise, a redirect is in progress.
-      return user ? null : <LoginPage />;
-    }
+    const isAdminRoute = route.startsWith('#/admin');
+    const isLoginPage = route === '#/admin/login';
 
-    if (route.startsWith('#/admin')) {
-      // Show dashboard only if authenticated; otherwise, a redirect is in progress.
+    if (isAdminRoute) {
+      if (isLoginPage) {
+        // Only show login page if the user is not logged in.
+        return user ? null : <LoginPage />;
+      }
+      // For any other admin route, show the dashboard if the user is logged in.
       return user ? <AdminDashboard route={route} /> : null;
     }
 
-    // Default to the public site content
+    // Default to showing the public site content
     return (
       <>
         <main className="flex-grow">
