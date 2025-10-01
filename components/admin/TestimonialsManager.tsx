@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase';
 
@@ -14,6 +13,7 @@ const TestimonialsManager: React.FC = () => {
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [text, setText] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const testimonialsRef = db.ref('testimonials');
@@ -34,16 +34,31 @@ const TestimonialsManager: React.FC = () => {
         setName('');
         setCompany('');
         setText('');
+        setSuccessMessage('Testemunho adicionado com sucesso!');
+        setTimeout(() => setSuccessMessage(''), 3000);
       })
       .catch(error => console.error("Error adding testimonial:", error));
   };
 
   const handleDelete = (id: string) => {
-    db.ref(`testimonials/${id}`).remove();
+    db.ref(`testimonials/${id}`).remove()
+      .then(() => {
+        setSuccessMessage('Testemunho deletado com sucesso!');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      })
+      .catch(error => console.error("Error deleting testimonial:", error));
   };
 
   return (
     <div>
+      {successMessage && (
+          <div className="mb-6 p-4 bg-green-100 border border-green-300 text-green-800 rounded-lg shadow" role="alert">
+            <div className="flex items-center">
+              <i className="fas fa-check-circle mr-3 text-green-600"></i>
+              <span>{successMessage}</span>
+            </div>
+          </div>
+        )}
       <div className="bg-white p-8 rounded-xl shadow-lg mb-10">
         <h2 className="text-2xl font-bold text-slate-800 mb-6">Adicionar Testemunho</h2>
         <form onSubmit={handleSubmit}>

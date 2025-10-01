@@ -14,6 +14,7 @@ const GalleryManager: React.FC = () => {
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -49,6 +50,7 @@ const GalleryManager: React.FC = () => {
     if (!selectedFile) return;
 
     setUploadError(null);
+    setSuccessMessage('');
     setIsUploading(true);
     setUploadProgress(0);
     const file = selectedFile;
@@ -79,6 +81,8 @@ const GalleryManager: React.FC = () => {
             storagePath: storagePath,
             name: file.name
           }).then(() => {
+              setSuccessMessage('Foto enviada com sucesso!');
+              setTimeout(() => setSuccessMessage(''), 3000);
               setIsUploading(false);
               setSelectedFile(null);
               if (fileInputRef.current) {
@@ -98,23 +102,46 @@ const GalleryManager: React.FC = () => {
     );
   };
 
-
   const handleDeleteImage = (image: GalleryImage) => {
+    setSuccessMessage('');
+    const removeDbEntry = () => {
+      db.ref(`gallery/${image.id}`).remove()
+        .then(() => {
+          setSuccessMessage('Foto deletada com sucesso!');
+          setTimeout(() => setSuccessMessage(''), 3000);
+        })
+        .catch(dbError => {
+          console.error("Error deleting DB entry:", dbError);
+          setUploadError('Falha ao deletar a referência da foto.');
+        });
+    };
+
     const imageStorageRef = storage.ref(image.storagePath);
     imageStorageRef.delete()
       .then(() => {
-        db.ref(`gallery/${image.id}`).remove();
+        removeDbEntry();
       })
       .catch(error => {
-        console.error("Error deleting image:", error)
+        console.error("Error deleting image from storage:", error);
         if ((error as any).code === 'storage/object-not-found') {
-             db.ref(`gallery/${image.id}`).remove();
+          console.warn("Image not found in storage, deleting from DB anyway.");
+          removeDbEntry(); // Remove DB entry even if storage file is missing
+        } else {
+          setUploadError('Falha ao deletar o arquivo da foto.');
         }
       });
   };
 
   return (
     <div>
+        {successMessage && (
+          <div className="mb-6 p-4 bg-green-100 border border-green-300 text-green-800 rounded-lg shadow" role="alert">
+            <div className="flex items-center">
+              <i className="fas fa-check-circle mr-3 text-green-600"></i>
+              <span>{successMessage}</span>
+            </div>
+          </div>
+        )}
         <div className="bg-white p-8 rounded-xl shadow-lg mb-10">
            <h2 className="text-2xl font-bold text-slate-800 mb-6">Upload Foto</h2>
            <div className="flex items-center space-x-4">
