@@ -10,6 +10,7 @@ interface GalleryImage {
 const Gallery: React.FC = () => {
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const scrollContainer = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -18,9 +19,11 @@ const Gallery: React.FC = () => {
       const data = snapshot.val();
       const loadedImages: GalleryImage[] = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
       setImages(loadedImages.reverse());
+      setError(null);
       setLoading(false);
     }, (error) => {
         console.error("Firebase read failed:", error);
+        setError("Não foi possível carregar a galeria. Tente novamente mais tarde.");
         setLoading(false);
     });
     return () => galleryRef.off('value', listener);
@@ -35,6 +38,9 @@ const Gallery: React.FC = () => {
   const renderGalleryContent = () => {
     if (loading) {
       return <p className="w-full text-center text-slate-500">Carregando galeria...</p>;
+    }
+    if (error) {
+      return <p className="w-full text-center text-red-500">{error}</p>;
     }
     if (images.length === 0) {
       return <p className="w-full text-center text-slate-500">Nenhuma imagem na galeria ainda.</p>;
