@@ -59,7 +59,7 @@ const AdminPage: React.FC = () => {
       setIsUploading(true);
       const file = selectedFile;
       // Fix: Use v8 compat API for storage references and uploads.
-      const imageStorageRef = storage.ref(`gallery/${Date.now()}_${file.name}`);
+      const imageStorageRef = storage.ref(`photo/${Date.now()}_${file.name}`);
       imageStorageRef.put(file)
         .then(snapshot => snapshot.ref.getDownloadURL())
         .then(url => {

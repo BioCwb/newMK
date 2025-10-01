@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { db, storage } from '../../firebase';
 
@@ -35,7 +34,7 @@ const GalleryManager: React.FC = () => {
     if (selectedFile) {
       setIsUploading(true);
       const file = selectedFile;
-      const imageStorageRef = storage.ref(`gallery/${Date.now()}_${file.name}`);
+      const imageStorageRef = storage.ref(`photo/${Date.now()}_${file.name}`);
       imageStorageRef.put(file)
         .then(snapshot => snapshot.ref.getDownloadURL())
         .then(url => {
