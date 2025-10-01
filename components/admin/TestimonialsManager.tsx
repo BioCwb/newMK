@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase';
 
@@ -14,6 +15,8 @@ const TestimonialsManager: React.FC = () => {
   const [company, setCompany] = useState('');
   const [text, setText] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [testimonialToDelete, setTestimonialToDelete] = useState<Testimonial | null>(null);
 
   useEffect(() => {
     const testimonialsRef = db.ref('testimonials');
@@ -40,13 +43,29 @@ const TestimonialsManager: React.FC = () => {
       .catch(error => console.error("Error adding testimonial:", error));
   };
 
-  const handleDelete = (id: string) => {
-    db.ref(`testimonials/${id}`).remove()
+  const handleDeleteClick = (testimonial: Testimonial) => {
+    setTestimonialToDelete(testimonial);
+    setIsModalOpen(true);
+  };
+  
+  const cancelDelete = () => {
+    setIsModalOpen(false);
+    setTestimonialToDelete(null);
+  };
+
+  const confirmDelete = () => {
+    if (!testimonialToDelete) return;
+
+    db.ref(`testimonials/${testimonialToDelete.id}`).remove()
       .then(() => {
         setSuccessMessage('Testemunho deletado com sucesso!');
         setTimeout(() => setSuccessMessage(''), 3000);
       })
-      .catch(error => console.error("Error deleting testimonial:", error));
+      .catch(error => console.error("Error deleting testimonial:", error))
+      .finally(() => {
+        setIsModalOpen(false);
+        setTestimonialToDelete(null);
+      });
   };
 
   return (
@@ -88,7 +107,7 @@ const TestimonialsManager: React.FC = () => {
                     <p className="font-bold text-slate-800">{t.name} <span className="font-normal text-slate-500 text-sm">- {t.company}</span></p>
                     <p className="text-slate-600 mt-1 italic">"{t.text}"</p>
                   </div>
-                  <button onClick={() => handleDelete(t.id)} className="ml-4 flex-shrink-0 bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md text-xs transition-colors">
+                  <button onClick={() => handleDeleteClick(t)} className="ml-4 flex-shrink-0 bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md text-xs transition-colors">
                     Delete
                   </button>
               </div>
@@ -98,6 +117,31 @@ const TestimonialsManager: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {isModalOpen && testimonialToDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title-testimonial">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md text-center">
+              <h3 id="modal-title-testimonial" className="text-xl font-bold text-slate-800 mb-4">Confirmar Exclusão</h3>
+              <p className="text-slate-600 mb-6">
+                Tem certeza que deseja deletar o testemunho de "<span className="font-semibold">{testimonialToDelete.name}</span>"?
+              </p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={cancelDelete}
+                  className="px-6 py-2 rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                >
+                  Deletar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 };
