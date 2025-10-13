@@ -27,6 +27,7 @@ const TestimonialForm: React.FC = () => {
         company,
         text,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        approved: false, // Submissions from the public form are pending approval
       });
 
       setSuccess('Seu testemunho foi enviado com sucesso! Obrigado pela sua contribuição.');

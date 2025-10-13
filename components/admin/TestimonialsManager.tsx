@@ -6,6 +6,7 @@ interface Testimonial {
   name: string;
   company: string;
   text: string;
+  approved: boolean; // Approval status
   createdAt: { // Firestore timestamp type
     seconds: number;
     nanoseconds: number;
@@ -44,16 +45,28 @@ const TestimonialsManager: React.FC = () => {
         name, 
         company, 
         text, 
-        createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        approved: true, // Auto-approve testimonials added by admin
       });
       
       setName('');
       setCompany('');
       setText('');
-      setSuccessMessage('Testemunho adicionado com sucesso!');
+      setSuccessMessage('Testemunho adicionado e aprovado com sucesso!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
       console.error("Error adding testimonial:", error);
+    }
+  };
+
+  const handleApprove = async (testimonialId: string) => {
+    try {
+      const testimonialDoc = firestore.collection('testimonials').doc(testimonialId);
+      await testimonialDoc.update({ approved: true });
+      setSuccessMessage('Testemunho aprovado com sucesso!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error("Error approving testimonial:", error);
     }
   };
 
@@ -120,12 +133,26 @@ const TestimonialsManager: React.FC = () => {
             <div key={t.id} className="bg-slate-50 p-4 rounded-lg border border-slate-200">
               <div className="flex justify-between items-start">
                   <div>
-                    <p className="font-bold text-slate-800">{t.name} <span className="font-normal text-slate-500 text-sm">- {t.company}</span></p>
+                    <div className="flex items-center space-x-2">
+                        <p className="font-bold text-slate-800">{t.name} <span className="font-normal text-slate-500 text-sm">- {t.company}</span></p>
+                        {t.approved ? (
+                            <span className="text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Aprovado</span>
+                        ) : (
+                            <span className="text-xs font-semibold bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Pendente</span>
+                        )}
+                    </div>
                     <p className="text-slate-600 mt-1 italic">"{t.text}"</p>
                   </div>
-                  <button onClick={() => handleDeleteClick(t)} className="ml-4 flex-shrink-0 bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md text-xs transition-colors">
-                    Delete
-                  </button>
+                  <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
+                    {!t.approved && (
+                        <button onClick={() => handleApprove(t.id)} className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-md text-xs transition-colors">
+                            Aprovar
+                        </button>
+                    )}
+                    <button onClick={() => handleDeleteClick(t)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md text-xs transition-colors">
+                        Delete
+                    </button>
+                  </div>
               </div>
             </div>
           )) : (

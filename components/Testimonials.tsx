@@ -6,6 +6,7 @@ interface Testimonial {
   name: string;
   company: string;
   text: string;
+  approved: boolean;
   createdAt: {
     seconds: number;
     nanoseconds: number;
@@ -17,14 +18,26 @@ const Testimonials: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const testimonialsCollection = firestore.collection('testimonials').orderBy('createdAt', 'desc');
+    // Fetch all testimonials and filter/sort on the client to avoid needing a composite index.
+    const testimonialsCollection = firestore.collection('testimonials');
     
     const unsubscribe = testimonialsCollection.onSnapshot((snapshot) => {
-      const loadedTestimonials = snapshot.docs.map(doc => ({
+      const allTestimonials = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       })) as Testimonial[];
-      setTestimonials(loadedTestimonials);
+
+      // Filter for approved testimonials and sort them by creation date (newest first)
+      const approvedAndSorted = allTestimonials
+        .filter(t => t.approved === true)
+        .sort((a, b) => {
+            if (!a.createdAt) return 1;
+            if (!b.createdAt) return -1;
+            // Compare timestamps to sort newest first
+            return b.createdAt.seconds - a.createdAt.seconds;
+        });
+
+      setTestimonials(approvedAndSorted);
       setLoading(false);
     }, (error) => {
         console.error("Firestore read failed:", error);
