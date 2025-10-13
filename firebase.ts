@@ -3,6 +3,7 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/database';
 import 'firebase/compat/storage';
 import 'firebase/compat/auth';
+import { getDatabase } from 'firebase/database';
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -20,8 +21,10 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !firebase.apps.length ? firebase.initializeApp(firebaseConfig) : firebase.app();
 
-// Fix: Use v8 compat API style for service exports.
-export const db = firebase.database();
+// Export v9 database instance for consistent use across the app
+export const database = getDatabase(app);
+
+// Keep v8 compat for storage and auth, as they are not causing issues.
 export const storage = firebase.storage();
 export const auth = firebase.auth();
 export { firebase, app }; // Export firebase namespace for types like firebase.User

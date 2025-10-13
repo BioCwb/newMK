@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getDatabase, ref, onValue } from 'firebase/database';
-import { app } from '../firebase';
+import { ref, onValue } from 'firebase/database';
+import { database } from '../firebase';
 
 interface Testimonial {
   id: string;
@@ -14,7 +14,6 @@ const Testimonials: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const database = getDatabase(app);
     const testimonialsRef = ref(database, 'testimonials');
     
     const unsubscribe = onValue(testimonialsRef, (snapshot) => {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getDatabase, ref, onValue, push, remove } from 'firebase/database';
-import { app } from '../../firebase';
+import { ref, onValue, push, remove } from 'firebase/database';
+import { database } from '../../firebase';
 
 interface Testimonial {
   id: string;
@@ -19,7 +19,6 @@ const TestimonialsManager: React.FC = () => {
   const [testimonialToDelete, setTestimonialToDelete] = useState<Testimonial | null>(null);
 
   useEffect(() => {
-    const database = getDatabase(app);
     const testimonialsRef = ref(database, 'testimonials');
     const unsubscribe = onValue(testimonialsRef, (snapshot) => {
       const data = snapshot.val();
@@ -34,7 +33,6 @@ const TestimonialsManager: React.FC = () => {
     if (!name || !text) return;
     
     try {
-      const database = getDatabase(app);
       const testimonialsRef = ref(database, 'testimonials');
       await push(testimonialsRef, { name, company, text });
       
@@ -62,7 +60,6 @@ const TestimonialsManager: React.FC = () => {
     if (!testimonialToDelete) return;
 
     try {
-      const database = getDatabase(app);
       const testimonialRef = ref(database, `testimonials/${testimonialToDelete.id}`);
       await remove(testimonialRef);
       

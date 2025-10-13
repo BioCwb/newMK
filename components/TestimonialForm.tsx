@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { app } from '../firebase';
-import { getDatabase, ref, push } from "firebase/database";
+import { database } from '../firebase';
+import { ref, push } from "firebase/database";
 
 const TestimonialForm: React.FC = () => {
   const [name, setName] = useState('');
@@ -22,7 +22,6 @@ const TestimonialForm: React.FC = () => {
     setSuccess(null);
 
     try {
-      const database = getDatabase(app);
       const testimonialsRef = ref(database, 'testimonials');
       await push(testimonialsRef, {
         name,

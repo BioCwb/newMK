@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
-import { db, firebase } from '../firebase';
+import { database } from '../firebase';
+import { ref, push, serverTimestamp } from 'firebase/database';
 
 const ContactForm: React.FC = () => {
   const [name, setName] = useState('');
@@ -22,12 +22,13 @@ const ContactForm: React.FC = () => {
     setError(null);
     setSuccess(null);
 
-    db.ref('messages').push({ 
+    const messagesRef = ref(database, 'messages');
+    push(messagesRef, { 
       name, 
       email,
       company, 
       text: message,
-      createdAt: firebase.database.ServerValue.TIMESTAMP
+      createdAt: serverTimestamp()
     })
       .then(() => {
         setSuccess('Sua mensagem foi enviada com sucesso! Entraremos em contato em breve.');

@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
-import { db } from '../../firebase';
+import { database } from '../../firebase';
+import { ref, onValue, remove } from 'firebase/database';
 
 interface Message {
   id: string;
@@ -19,8 +19,8 @@ const MessagesManager: React.FC = () => {
   const [messageToDelete, setMessageToDelete] = useState<Message | null>(null);
 
   useEffect(() => {
-    const messagesRef = db.ref('messages');
-    const listener = messagesRef.on('value', (snapshot) => {
+    const messagesRef = ref(database, 'messages');
+    const unsubscribe = onValue(messagesRef, (snapshot) => {
       const data = snapshot.val();
       const loadedMessages: Message[] = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
       loadedMessages.sort((a, b) => b.createdAt - a.createdAt);
@@ -30,7 +30,7 @@ const MessagesManager: React.FC = () => {
         console.error("Firebase read failed:", error);
         setLoading(false);
     });
-    return () => messagesRef.off('value', listener);
+    return () => unsubscribe();
   }, []);
 
   const handleDeleteClick = (message: Message) => {
@@ -46,7 +46,8 @@ const MessagesManager: React.FC = () => {
   const confirmDelete = () => {
     if (!messageToDelete) return;
 
-    db.ref(`messages/${messageToDelete.id}`).remove()
+    const messageRef = ref(database, `messages/${messageToDelete.id}`);
+    remove(messageRef)
       .then(() => {
         setSuccessMessage('Mensagem deletada com sucesso!');
         setTimeout(() => setSuccessMessage(''), 3000);
