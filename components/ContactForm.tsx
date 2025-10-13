@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { database } from '../firebase';
-import { ref, push, serverTimestamp } from 'firebase/database';
+import { firestore, firebase } from '../firebase';
 
 const ContactForm: React.FC = () => {
   const [name, setName] = useState('');
@@ -11,7 +10,7 @@ const ContactForm: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !message) {
       setError("Por favor, preencha todos os campos obrigatórios.");
@@ -22,28 +21,27 @@ const ContactForm: React.FC = () => {
     setError(null);
     setSuccess(null);
 
-    const messagesRef = ref(database, 'messages');
-    push(messagesRef, { 
-      name, 
-      email,
-      company, 
-      text: message,
-      createdAt: serverTimestamp()
-    })
-      .then(() => {
-        setSuccess('Sua mensagem foi enviada com sucesso! Entraremos em contato em breve.');
-        setName('');
-        setEmail('');
-        setCompany('');
-        setMessage('');
-      })
-      .catch(error => {
-        console.error("Error submitting message:", error);
-        setError("Ocorreu um erro ao enviar sua mensagem. Tente novamente.");
-      })
-      .finally(() => {
-        setSubmitting(false);
+    try {
+      const messagesCollection = firestore.collection('messages');
+      await messagesCollection.add({
+        name,
+        email,
+        company,
+        text: message,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
+      
+      setSuccess('Sua mensagem foi enviada com sucesso! Entraremos em contato em breve.');
+      setName('');
+      setEmail('');
+      setCompany('');
+      setMessage('');
+    } catch (err) {
+      console.error("Error submitting message:", err);
+      setError("Ocorreu um erro ao enviar sua mensagem. Tente novamente.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

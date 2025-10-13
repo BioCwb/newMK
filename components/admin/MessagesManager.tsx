@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { database } from '../../firebase';
-import { ref, onValue, remove, query, orderByChild } from 'firebase/database';
+import { firestore } from '../../firebase';
 
 interface Message {
   id: string;
@@ -8,7 +7,10 @@ interface Message {
   email: string;
   company?: string;
   text: string;
-  createdAt: number;
+  createdAt: { // Firestore timestamp type
+    seconds: number;
+    nanoseconds: number;
+  } | null;
 }
 
 const MessagesManager: React.FC = () => {
@@ -19,20 +21,20 @@ const MessagesManager: React.FC = () => {
   const [messageToDelete, setMessageToDelete] = useState<Message | null>(null);
 
   useEffect(() => {
-    const messagesRef = ref(database, 'messages');
-    const messagesQuery = query(messagesRef, orderByChild('createdAt'));
+    const messagesCollection = firestore.collection('messages').orderBy('createdAt', 'desc');
     
-    const unsubscribe = onValue(messagesQuery, (snapshot) => {
-      const loadedMessages: Message[] = [];
-       snapshot.forEach((childSnapshot) => {
-        loadedMessages.push({ id: childSnapshot.key!, ...childSnapshot.val() });
-      });
-      setMessages(loadedMessages.reverse());
+    const unsubscribe = messagesCollection.onSnapshot((snapshot) => {
+      const loadedMessages = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Message[];
+      setMessages(loadedMessages);
       setLoading(false);
     }, (error) => {
-        console.error("Firebase read failed:", error);
+        console.error("Firestore read failed:", error);
         setLoading(false);
     });
+
     return () => unsubscribe();
   }, []);
 
@@ -46,20 +48,19 @@ const MessagesManager: React.FC = () => {
     setMessageToDelete(null);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!messageToDelete) return;
 
-    const messageRef = ref(database, `messages/${messageToDelete.id}`);
-    remove(messageRef)
-      .then(() => {
-        setSuccessMessage('Mensagem deletada com sucesso!');
-        setTimeout(() => setSuccessMessage(''), 3000);
-      })
-      .catch(error => console.error("Error deleting message:", error))
-      .finally(() => {
-        setIsModalOpen(false);
-        setMessageToDelete(null);
-      });
+    try {
+      await firestore.collection('messages').doc(messageToDelete.id).delete();
+      setSuccessMessage('Mensagem deletada com sucesso!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+       console.error("Error deleting message:", error)
+    } finally {
+      setIsModalOpen(false);
+      setMessageToDelete(null);
+    }
   };
 
   const renderContent = () => {
@@ -84,7 +85,9 @@ const MessagesManager: React.FC = () => {
                 <button onClick={() => handleDeleteClick(msg)} className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md text-xs transition-colors">
                   Delete
                 </button>
-                <p className="text-xs text-slate-400 mt-2">{new Date(msg.createdAt).toLocaleString('pt-BR')}</p>
+                <p className="text-xs text-slate-400 mt-2">
+                  {msg.createdAt ? new Date(msg.createdAt.seconds * 1000).toLocaleString('pt-BR') : ''}
+                </p>
             </div>
         </div>
       </div>
