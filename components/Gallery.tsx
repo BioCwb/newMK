@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { getStorage, ref, listAll, getDownloadURL } from 'firebase/storage';
+import { app } from '../firebase';
 
 interface GalleryImage {
   id: string;
@@ -14,19 +15,25 @@ const Gallery: React.FC = () => {
   const scrollContainer = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const galleryRef = db.ref('gallery');
-    const listener = galleryRef.on('value', (snapshot) => {
-      const data = snapshot.val();
-      const loadedImages: GalleryImage[] = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-      setImages(loadedImages.reverse());
-      setError(null);
-      setLoading(false);
-    }, (error) => {
-        console.error("Firebase read failed:", error);
+    const storage = getStorage(app);
+    const listRef = ref(storage, 'photo/'); // Corresponds to GalleryManager upload path
+
+    listAll(listRef)
+      .then(async (res) => {
+        const imagePromises = res.items.map(async (itemRef) => {
+          const url = await getDownloadURL(itemRef);
+          return { id: itemRef.name, url, name: itemRef.name };
+        });
+        const loadedImages = await Promise.all(imagePromises);
+        setImages(loadedImages.reverse());
+        setError(null);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Firebase Storage list failed:", error);
         setError("Não foi possível carregar a galeria. Tente novamente mais tarde.");
         setLoading(false);
-    });
-    return () => galleryRef.off('value', listener);
+      });
   }, []);
 
   const scroll = (scrollOffset: number) => {

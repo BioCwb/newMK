@@ -18,12 +18,10 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+const app = !firebase.apps.length ? firebase.initializeApp(firebaseConfig) : firebase.app();
 
 // Fix: Use v8 compat API style for service exports.
 export const db = firebase.database();
 export const storage = firebase.storage();
 export const auth = firebase.auth();
-export { firebase }; // Export firebase namespace for types like firebase.User
+export { firebase, app }; // Export firebase namespace for types like firebase.User
