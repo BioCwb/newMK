@@ -37,7 +37,7 @@ const Testimonials: React.FC = () => {
             return b.createdAt.seconds - a.createdAt.seconds;
         });
 
-      setTestimonials(approvedAndSorted);
+      setTestimonials(approvedAndSorted.slice(0, 6)); // Show only the 6 most recent testimonials
       setLoading(false);
     }, (error) => {
         console.error("Firestore read failed:", error);
@@ -72,7 +72,7 @@ const Testimonials: React.FC = () => {
     <section id="testimonials" className="py-20 bg-white">
       <div className="container mx-auto px-6">
         <h2 className="text-4xl font-bold text-slate-800 text-center mb-10">Testemunhos de Clientes</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {renderTestimonialsContent()}
         </div>
       </div>
