@@ -5,6 +5,7 @@ import Hero from './components/Hero';
 import About from './components/About';
 import Gallery from './components/Gallery';
 import Testimonials from './components/Testimonials';
+import TestimonialForm from './components/TestimonialForm'; // Import the new form
 import ContactForm from './components/ContactForm';
 import Footer from './components/Footer';
 import LoginPage from './components/admin/LoginPage';
@@ -75,6 +76,7 @@ const App: React.FC = () => {
           <About />
           <Gallery />
           <Testimonials />
+          <TestimonialForm />
           <ContactForm />
         </main>
         <Footer />

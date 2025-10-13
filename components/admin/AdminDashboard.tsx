@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { auth } from '../../firebase';
 import GalleryManager from './GalleryManager';
 import TestimonialsManager from './TestimonialsManager';
+import MessagesManager from './MessagesManager';
 
 interface AdminDashboardProps {
   route: string;
@@ -34,6 +35,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ route }) => {
     }
     if (route.includes('testimonials')) {
       return <TestimonialsManager />;
+    }
+    if (route.includes('messages')) {
+        return <MessagesManager />;
     }
     // Default to dashboard view
     return (
@@ -71,6 +75,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ route }) => {
                     <a href="#/admin/testimonials" className={getLinkClass('testimonials')}>
                         <i className="fas fa-comment-dots w-6 mr-3"></i>
                         <span>Gerenciar Testemunhos</span>
+                    </a>
+                    <a href="#/admin/messages" className={getLinkClass('messages')}>
+                        <i className="fas fa-envelope-open-text w-6 mr-3"></i>
+                        <span>Mensagens</span>
                     </a>
                 </nav>
                 <div className="mt-auto pt-8">

@@ -1,34 +1,55 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { db, storage } from '../../firebase';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { storage } from '../../firebase';
 
-interface GalleryImage {
-  id: string;
+interface StorageImage {
   url: string;
-  storagePath: string;
+  storagePath: string; // Use this as the unique ID
   name: string;
 }
 
 const GalleryManager: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [images, setImages] = useState<GalleryImage[]>([]);
+  const [images, setImages] = useState<StorageImage[]>([]);
+  const [loadingImages, setLoadingImages] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [imageToDelete, setImageToDelete] = useState<GalleryImage | null>(null);
+  const [imageToDelete, setImageToDelete] = useState<StorageImage | null>(null);
+
+  // Fetches all images directly from the 'photo/' folder in Firebase Storage
+  const fetchImages = useCallback(async () => {
+    setLoadingImages(true);
+    setUploadError(null); // Clear previous errors
+    try {
+      const listRef = storage.ref('photo/');
+      const res = await listRef.listAll();
+      const imagePromises = res.items.map(async (itemRef) => {
+        const url = await itemRef.getDownloadURL();
+        return {
+          url,
+          storagePath: itemRef.fullPath,
+          name: itemRef.name,
+        };
+      });
+      const loadedImages = await Promise.all(imagePromises);
+      // Sort images by name (assuming newer uploads have a larger timestamp prefix)
+      loadedImages.sort((a, b) => b.name.localeCompare(a.name));
+      setImages(loadedImages);
+    } catch (error) {
+      console.error("Error fetching images from storage:", error);
+      setUploadError("Não foi possível carregar as imagens da galeria.");
+    } finally {
+      setLoadingImages(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const galleryRef = db.ref('gallery');
-    const listener = galleryRef.on('value', (snapshot) => {
-      const data = snapshot.val();
-      const loadedImages: GalleryImage[] = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-      setImages(loadedImages.reverse());
-    });
-    return () => galleryRef.off('value', listener);
-  }, []);
+    fetchImages();
+  }, [fetchImages]);
 
   // Effect to clean up the object URL to prevent memory leaks
   useEffect(() => {
@@ -53,7 +74,6 @@ const GalleryManager: React.FC = () => {
   };
   
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Clean up previous preview before creating a new one
     if (imagePreview) {
       URL.revokeObjectURL(imagePreview);
     }
@@ -71,7 +91,7 @@ const GalleryManager: React.FC = () => {
         return;
       }
       setSelectedFile(file);
-      setImagePreview(URL.createObjectURL(file)); // Create preview URL
+      setImagePreview(URL.createObjectURL(file));
     } else {
         setSelectedFile(null);
         setImagePreview(null);
@@ -100,35 +120,21 @@ const GalleryManager: React.FC = () => {
         console.error("Error uploading image:", error);
         setUploadError(`Falha no upload: ${error.message}`);
         setIsUploading(false);
-        // Do not reset selection, allow user to retry
       },
       () => {
-        uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
-          const galleryDbRef = db.ref('gallery');
-          galleryDbRef.push({
-            url: downloadURL,
-            storagePath: storagePath,
-            name: file.name
-          }).then(() => {
-              setSuccessMessage('Foto enviada com sucesso!');
-              setTimeout(() => setSuccessMessage(''), 3000);
-              setIsUploading(false);
-              handleCancelSelection(); // Reset form on success
-          }).catch((dbError) => {
-              console.error("Error saving to database:", dbError);
-              setUploadError(`Falha ao salvar no banco de dados: ${dbError.message}`);
-              setIsUploading(false);
-          });
-        }).catch((urlError) => {
-            console.error("Error getting download URL:", urlError);
-            setUploadError(`Falha ao obter URL da imagem: ${urlError.message}`);
-            setIsUploading(false);
-        });
+        // On successful upload, there's no need to interact with the database.
+        // The public gallery component will automatically find the new image on its next load.
+        // We just refresh the list in the admin panel.
+        setSuccessMessage('Foto enviada com sucesso!');
+        setTimeout(() => setSuccessMessage(''), 3000);
+        setIsUploading(false);
+        handleCancelSelection(); // Reset form
+        fetchImages(); // Refresh the list to show the new image
       }
     );
   };
 
-  const handleDeleteClick = (image: GalleryImage) => {
+  const handleDeleteClick = (image: StorageImage) => {
     setImageToDelete(image);
     setIsModalOpen(true);
   };
@@ -137,33 +143,18 @@ const GalleryManager: React.FC = () => {
     if (!imageToDelete) return;
     
     setSuccessMessage('');
-    const image = imageToDelete;
 
-    const removeDbEntry = () => {
-      db.ref(`gallery/${image.id}`).remove()
-        .then(() => {
-          setSuccessMessage('Foto deletada com sucesso!');
-          setTimeout(() => setSuccessMessage(''), 3000);
-        })
-        .catch(dbError => {
-          console.error("Error deleting DB entry:", dbError);
-          setUploadError('Falha ao deletar a referência da foto.');
-        });
-    };
-
-    const imageStorageRef = storage.ref(image.storagePath);
+    // Deletes the image directly from Firebase Storage. No database interaction needed.
+    const imageStorageRef = storage.ref(imageToDelete.storagePath);
     imageStorageRef.delete()
       .then(() => {
-        removeDbEntry();
+        setSuccessMessage('Foto deletada com sucesso!');
+        setTimeout(() => setSuccessMessage(''), 3000);
+        fetchImages(); // Refresh the list to remove the deleted image
       })
       .catch(error => {
         console.error("Error deleting image from storage:", error);
-        if ((error as any).code === 'storage/object-not-found') {
-          console.warn("Image not found in storage, deleting from DB anyway.");
-          removeDbEntry(); // Remove DB entry even if storage file is missing
-        } else {
-          setUploadError('Falha ao deletar o arquivo da foto.');
-        }
+        setUploadError('Falha ao deletar o arquivo da foto.');
       })
       .finally(() => {
         setIsModalOpen(false);
@@ -174,6 +165,24 @@ const GalleryManager: React.FC = () => {
   const cancelDelete = () => {
     setIsModalOpen(false);
     setImageToDelete(null);
+  };
+
+  const renderImageList = () => {
+    if(loadingImages) {
+        return <p className="text-slate-500 text-center py-4">Carregando fotos...</p>;
+    }
+    if (images.length > 0) {
+        return images.map(image => (
+            <div key={image.storagePath} className="flex items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <img src={image.url} alt={image.name} className="w-16 h-16 object-cover rounded-md mr-4"/>
+            <span className="text-slate-700 font-medium truncate flex-grow" title={image.name}>{image.name}</span>
+            <button onClick={() => handleDeleteClick(image)} className="ml-4 bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-4 rounded-md text-sm transition-colors">
+                Delete
+            </button>
+            </div>
+        ));
+    }
+    return <p className="text-slate-500 text-center py-4">Nenhuma foto enviada.</p>;
   };
 
   return (
@@ -245,19 +254,9 @@ const GalleryManager: React.FC = () => {
         </div>
 
         <div className="bg-white p-8 rounded-xl shadow-lg">
-          <h2 className="text-2xl font-bold text-slate-800 mb-6">Uploaded Fotos</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-6">Fotos Enviadas</h2>
           <div className="space-y-4">
-            {images.length > 0 ? images.map(image => (
-              <div key={image.id} className="flex items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
-                <img src={image.url} alt={image.name} className="w-16 h-16 object-cover rounded-md mr-4"/>
-                <span className="text-slate-700 font-medium truncate flex-grow">{image.name}</span>
-                <button onClick={() => handleDeleteClick(image)} className="ml-4 bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-4 rounded-md text-sm transition-colors">
-                  Delete
-                </button>
-              </div>
-            )) : (
-              <p className="text-slate-500 text-center py-4">Nenhuma foto enviada.</p>
-            )}
+            {renderImageList()}
           </div>
         </div>
 
