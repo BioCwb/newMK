@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { auth, firestore } from '../../firebase';
 import GalleryManager from './GalleryManager';
 import TestimonialsManager from './TestimonialsManager';
 import MessagesManager from './MessagesManager';
+import SettingsManager from './SettingsManager';
 
 interface AdminDashboardProps {
   route: string;
@@ -59,6 +59,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ route }) => {
     }
     if (route.includes('messages')) {
         return <MessagesManager />;
+    }
+    if (route.includes('settings')) {
+      return <SettingsManager />;
     }
     // Default to dashboard view
     return (
@@ -132,6 +135,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ route }) => {
                              {newMessagesCount > 0 && (
                                 <span className="ml-auto bg-blue-500 text-white text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full">{newMessagesCount}</span>
                             )}
+                        </a>
+                         <a href="#/admin/settings" className={getLinkClass('settings')}>
+                            <i className="fas fa-cog w-6 mr-3"></i>
+                            <span>Configurações</span>
                         </a>
                     </nav>
                 </div>

@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { getStorage, ref, listAll, getDownloadURL } from 'firebase/storage';
-import { app } from '../firebase';
+// Fix: Use the v8 compat storage instance from firebase.ts to resolve import errors.
+import { storage } from '../firebase';
 
 interface GalleryImage {
   id: string;
@@ -15,13 +15,13 @@ const Gallery: React.FC = () => {
   const scrollContainer = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const storage = getStorage(app);
-    const listRef = ref(storage, 'photo/'); // Corresponds to GalleryManager upload path
+    // Fix: Use v8 compat API for Firebase storage.
+    const listRef = storage.ref('photo/'); // Corresponds to GalleryManager upload path
 
-    listAll(listRef)
+    listRef.listAll()
       .then(async (res) => {
         const imagePromises = res.items.map(async (itemRef) => {
-          const url = await getDownloadURL(itemRef);
+          const url = await itemRef.getDownloadURL();
           return { id: itemRef.name, url, name: itemRef.name };
         });
         const loadedImages = await Promise.all(imagePromises);

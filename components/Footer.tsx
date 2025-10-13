@@ -1,7 +1,28 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { firestore } from '../firebase';
 
 const Footer: React.FC = () => {
+  const [operatingHours, setOperatingHours] = useState('Segunda - Sexta, 9h às 17h');
+
+  useEffect(() => {
+    const docRef = firestore.collection('settings').doc('businessInfo');
+    
+    // Listen for real-time updates
+    const unsubscribe = docRef.onSnapshot((doc) => {
+      if (doc.exists) {
+        // Fallback to default if the field is missing
+        setOperatingHours(doc.data()?.operatingHours || 'Segunda - Sexta, 9h às 17h');
+      }
+    }, (error) => {
+        console.error("Error fetching operating hours:", error);
+        // In case of error, we just keep the default value
+    });
+
+    // Clean up the listener on component unmount
+    return () => unsubscribe();
+  }, []);
+
+
   return (
     <footer className="bg-slate-800 text-slate-300 pt-16 pb-8">
       <div className="container mx-auto px-6">
@@ -29,7 +50,7 @@ const Footer: React.FC = () => {
               </li>
               <li className="flex items-center justify-center md:justify-start">
                 <i className="fas fa-clock w-6 text-blue-400"></i>
-                <span>Segunda - Sexta, 9h às 17h</span>
+                <span>{operatingHours}</span>
               </li>
             </ul>
           </div>
