@@ -7,11 +7,20 @@ interface Testimonial {
   company: string;
   text: string;
   approved: boolean;
+  rating: number;
   createdAt: {
     seconds: number;
     nanoseconds: number;
   } | null; // Firestore timestamp type
 }
+
+const StarRating: React.FC<{ rating: number }> = ({ rating }) => (
+    <div className="flex justify-center space-x-1 text-yellow-400">
+        {[...Array(5)].map((_, index) => (
+            <i key={index} className={`fas fa-star ${index < rating ? 'text-yellow-400' : 'text-slate-300'}`}></i>
+        ))}
+    </div>
+);
 
 const Testimonials: React.FC = () => {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
@@ -59,6 +68,9 @@ const Testimonials: React.FC = () => {
         <div className="bg-blue-600 text-white rounded-full w-20 h-20 flex items-center justify-center text-3xl mb-4 shadow-lg mx-auto">
            <i className="fas fa-quote-left"></i>
         </div>
+         <div className="mb-4">
+            <StarRating rating={testimonial.rating || 0} />
+         </div>
         <p className="text-slate-600 mb-6 italic flex-grow">"{testimonial.text}"</p>
         <div>
           <h4 className="font-bold text-lg text-blue-700">{testimonial.name}</h4>

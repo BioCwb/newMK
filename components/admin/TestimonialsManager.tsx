@@ -7,17 +7,28 @@ interface Testimonial {
   company: string;
   text: string;
   approved: boolean; // Approval status
+  rating: number;
   createdAt: { // Firestore timestamp type
     seconds: number;
     nanoseconds: number;
   } | null;
 }
 
+const StarRatingDisplay: React.FC<{ rating: number }> = ({ rating }) => (
+    <div className="flex space-x-1 text-yellow-400">
+        {[...Array(5)].map((_, index) => (
+            <i key={index} className={`fas fa-star text-sm ${index < rating ? 'text-yellow-400' : 'text-slate-300'}`}></i>
+        ))}
+    </div>
+);
+
 const TestimonialsManager: React.FC = () => {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [text, setText] = useState('');
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
   const [successMessage, setSuccessMessage] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [testimonialToDelete, setTestimonialToDelete] = useState<Testimonial | null>(null);
@@ -37,14 +48,15 @@ const TestimonialsManager: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !text) return;
+    if (!name || !text || rating === 0) return;
     
     try {
       const testimonialsCollection = firestore.collection('testimonials');
       await testimonialsCollection.add({ 
         name, 
         company, 
-        text, 
+        text,
+        rating, 
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         approved: true, // Auto-approve testimonials added by admin
       });
@@ -52,6 +64,7 @@ const TestimonialsManager: React.FC = () => {
       setName('');
       setCompany('');
       setText('');
+      setRating(0);
       setSuccessMessage('Testemunho adicionado e aprovado com sucesso!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
@@ -108,14 +121,39 @@ const TestimonialsManager: React.FC = () => {
       <div className="bg-white p-8 rounded-xl shadow-lg mb-10">
         <h2 className="text-2xl font-bold text-slate-800 mb-6">Adicionar Testemunho</h2>
         <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="name" className="block mb-2 text-sm font-medium text-slate-600">Nome</label>
-            <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label htmlFor="name" className="block mb-2 text-sm font-medium text-slate-600">Nome</label>
+              <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required />
+            </div>
+            <div>
+              <label htmlFor="company" className="block mb-2 text-sm font-medium text-slate-600">Empresa (Opcional)</label>
+              <input type="text" id="company" value={company} onChange={(e) => setCompany(e.target.value)} className="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
+            </div>
           </div>
-          <div className="mb-4">
-            <label htmlFor="company" className="block mb-2 text-sm font-medium text-slate-600">Empresa (Opcional)</label>
-            <input type="text" id="company" value={company} onChange={(e) => setCompany(e.target.value)} className="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" />
-          </div>
+           <div className="mb-4">
+                <label className="block mb-2 text-sm font-medium text-slate-600">Avaliação</label>
+                <div className="flex items-center space-x-1">
+                    {[...Array(5)].map((_, index) => {
+                        const starValue = index + 1;
+                        return (
+                            <button
+                                type="button"
+                                key={starValue}
+                                className={`text-2xl transition-colors duration-200 ${
+                                    starValue <= (hoverRating || rating) ? 'text-yellow-400' : 'text-slate-300'
+                                }`}
+                                onClick={() => setRating(starValue)}
+                                onMouseEnter={() => setHoverRating(starValue)}
+                                onMouseLeave={() => setHoverRating(0)}
+                                aria-label={`Avaliar com ${starValue} estrelas`}
+                            >
+                                <i className="fas fa-star"></i>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
           <div className="mb-4">
             <label htmlFor="text" className="block mb-2 text-sm font-medium text-slate-600">Testemunho</label>
             <textarea id="text" value={text} onChange={(e) => setText(e.target.value)} rows={4} className="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required></textarea>
@@ -133,15 +171,18 @@ const TestimonialsManager: React.FC = () => {
             <div key={t.id} className="bg-slate-50 p-4 rounded-lg border border-slate-200">
               <div className="flex justify-between items-start">
                   <div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-4">
                         <p className="font-bold text-slate-800">{t.name} <span className="font-normal text-slate-500 text-sm">- {t.company}</span></p>
+                        <StarRatingDisplay rating={t.rating || 0} />
+                    </div>
+                     <div className="mt-2">
                         {t.approved ? (
                             <span className="text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Aprovado</span>
                         ) : (
                             <span className="text-xs font-semibold bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Pendente</span>
                         )}
                     </div>
-                    <p className="text-slate-600 mt-1 italic">"{t.text}"</p>
+                    <p className="text-slate-600 mt-2 italic">"{t.text}"</p>
                   </div>
                   <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
                     {!t.approved && (
