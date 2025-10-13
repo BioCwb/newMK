@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
-import { db } from '../../firebase';
+import { getDatabase, ref, onValue, push, remove } from 'firebase/database';
+import { app } from '../../firebase';
 
 interface Testimonial {
   id: string;
@@ -19,28 +19,33 @@ const TestimonialsManager: React.FC = () => {
   const [testimonialToDelete, setTestimonialToDelete] = useState<Testimonial | null>(null);
 
   useEffect(() => {
-    const testimonialsRef = db.ref('testimonials');
-    const listener = testimonialsRef.on('value', (snapshot) => {
+    const database = getDatabase(app);
+    const testimonialsRef = ref(database, 'testimonials');
+    const unsubscribe = onValue(testimonialsRef, (snapshot) => {
       const data = snapshot.val();
       const loadedTestimonials: Testimonial[] = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
       setTestimonials(loadedTestimonials.reverse());
     });
-    return () => testimonialsRef.off('value', listener);
+    return () => unsubscribe();
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !text) return;
     
-    db.ref('testimonials').push({ name, company, text })
-      .then(() => {
-        setName('');
-        setCompany('');
-        setText('');
-        setSuccessMessage('Testemunho adicionado com sucesso!');
-        setTimeout(() => setSuccessMessage(''), 3000);
-      })
-      .catch(error => console.error("Error adding testimonial:", error));
+    try {
+      const database = getDatabase(app);
+      const testimonialsRef = ref(database, 'testimonials');
+      await push(testimonialsRef, { name, company, text });
+      
+      setName('');
+      setCompany('');
+      setText('');
+      setSuccessMessage('Testemunho adicionado com sucesso!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error("Error adding testimonial:", error);
+    }
   };
 
   const handleDeleteClick = (testimonial: Testimonial) => {
@@ -53,19 +58,22 @@ const TestimonialsManager: React.FC = () => {
     setTestimonialToDelete(null);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!testimonialToDelete) return;
 
-    db.ref(`testimonials/${testimonialToDelete.id}`).remove()
-      .then(() => {
-        setSuccessMessage('Testemunho deletado com sucesso!');
-        setTimeout(() => setSuccessMessage(''), 3000);
-      })
-      .catch(error => console.error("Error deleting testimonial:", error))
-      .finally(() => {
-        setIsModalOpen(false);
-        setTestimonialToDelete(null);
-      });
+    try {
+      const database = getDatabase(app);
+      const testimonialRef = ref(database, `testimonials/${testimonialToDelete.id}`);
+      await remove(testimonialRef);
+      
+      setSuccessMessage('Testemunho deletado com sucesso!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error("Error deleting testimonial:", error);
+    } finally {
+      setIsModalOpen(false);
+      setTestimonialToDelete(null);
+    }
   };
 
   return (

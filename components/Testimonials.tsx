@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { getDatabase, ref, onValue } from 'firebase/database';
+import { app } from '../firebase';
 
 interface Testimonial {
   id: string;
@@ -13,17 +14,20 @@ const Testimonials: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const testimonialsRef = db.ref('testimonials');
-    const listener = testimonialsRef.on('value', (snapshot) => {
+    const database = getDatabase(app);
+    const testimonialsRef = ref(database, 'testimonials');
+    
+    const unsubscribe = onValue(testimonialsRef, (snapshot) => {
       const data = snapshot.val();
       const loadedTestimonials: Testimonial[] = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-      setTestimonials(loadedTestimonials);
+      setTestimonials(loadedTestimonials.reverse()); // Show newest first
       setLoading(false);
     }, (error) => {
         console.error("Firebase read failed:", error);
         setLoading(false);
     });
-    return () => testimonialsRef.off('value', listener);
+
+    return () => unsubscribe();
   }, []);
 
   const renderTestimonialsContent = () => {

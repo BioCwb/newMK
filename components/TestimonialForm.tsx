@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
-import { db } from '../firebase';
+import { app } from '../firebase';
+import { getDatabase, ref, push } from "firebase/database";
 
 const TestimonialForm: React.FC = () => {
   const [name, setName] = useState('');
@@ -10,7 +10,7 @@ const TestimonialForm: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !text) {
       setError("Por favor, preencha seu nome e a mensagem do testemunho.");
@@ -21,24 +21,25 @@ const TestimonialForm: React.FC = () => {
     setError(null);
     setSuccess(null);
 
-    db.ref('testimonials').push({
-      name,
-      company,
-      text,
-    })
-      .then(() => {
-        setSuccess('Seu testemunho foi enviado com sucesso! Obrigado pela sua contribuição.');
-        setName('');
-        setCompany('');
-        setText('');
-      })
-      .catch(error => {
-        console.error("Error submitting testimonial:", error);
-        setError("Ocorreu um erro ao enviar seu testemunho. Tente novamente.");
-      })
-      .finally(() => {
-        setSubmitting(false);
+    try {
+      const database = getDatabase(app);
+      const testimonialsRef = ref(database, 'testimonials');
+      await push(testimonialsRef, {
+        name,
+        company,
+        text,
       });
+
+      setSuccess('Seu testemunho foi enviado com sucesso! Obrigado pela sua contribuição.');
+      setName('');
+      setCompany('');
+      setText('');
+    } catch (error) {
+      console.error("Error submitting testimonial:", error);
+      setError("Ocorreu um erro ao enviar seu testemunho. Tente novamente.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
