@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { database } from '../firebase';
-import { ref, push } from "firebase/database";
+import { firestore, firebase } from '../firebase'; // Import firebase for timestamp
 
 const TestimonialForm: React.FC = () => {
   const [name, setName] = useState('');
@@ -22,11 +21,12 @@ const TestimonialForm: React.FC = () => {
     setSuccess(null);
 
     try {
-      const testimonialsRef = ref(database, 'testimonials');
-      await push(testimonialsRef, {
+      const testimonialsCollection = firestore.collection('testimonials');
+      await testimonialsCollection.add({
         name,
         company,
         text,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
 
       setSuccess('Seu testemunho foi enviado com sucesso! Obrigado pela sua contribuição.');

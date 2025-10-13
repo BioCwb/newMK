@@ -3,6 +3,7 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/database';
 import 'firebase/compat/storage';
 import 'firebase/compat/auth';
+import 'firebase/compat/firestore'; // Import Firestore
 import { getDatabase } from 'firebase/database';
 
 // Your web app's Firebase configuration
@@ -21,10 +22,13 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !firebase.apps.length ? firebase.initializeApp(firebaseConfig) : firebase.app();
 
-// Export v9 database instance for consistent use across the app
+// Export v9 database instance for consistent use across the app (for messages)
 export const database = getDatabase(app);
+
+// Export Firestore instance
+export const firestore = app.firestore();
 
 // Keep v8 compat for storage and auth, as they are not causing issues.
 export const storage = firebase.storage();
 export const auth = firebase.auth();
-export { firebase, app }; // Export firebase namespace for types like firebase.User
+export { firebase, app }; // Export firebase namespace for types like firebase.User and FieldValue

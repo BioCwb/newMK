@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { ref, onValue } from 'firebase/database';
-import { database } from '../firebase';
+import { firestore } from '../firebase';
 
 interface Testimonial {
   id: string;
   name: string;
   company: string;
   text: string;
+  createdAt: {
+    seconds: number;
+    nanoseconds: number;
+  } | null; // Firestore timestamp type
 }
 
 const Testimonials: React.FC = () => {
@@ -14,15 +17,17 @@ const Testimonials: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const testimonialsRef = ref(database, 'testimonials');
+    const testimonialsCollection = firestore.collection('testimonials').orderBy('createdAt', 'desc');
     
-    const unsubscribe = onValue(testimonialsRef, (snapshot) => {
-      const data = snapshot.val();
-      const loadedTestimonials: Testimonial[] = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-      setTestimonials(loadedTestimonials.reverse()); // Show newest first
+    const unsubscribe = testimonialsCollection.onSnapshot((snapshot) => {
+      const loadedTestimonials = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Testimonial[];
+      setTestimonials(loadedTestimonials);
       setLoading(false);
     }, (error) => {
-        console.error("Firebase read failed:", error);
+        console.error("Firestore read failed:", error);
         setLoading(false);
     });
 

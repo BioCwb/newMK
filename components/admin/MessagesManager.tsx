@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { database } from '../../firebase';
-import { ref, onValue, remove } from 'firebase/database';
+import { ref, onValue, remove, query, orderByChild } from 'firebase/database';
 
 interface Message {
   id: string;
@@ -20,11 +20,14 @@ const MessagesManager: React.FC = () => {
 
   useEffect(() => {
     const messagesRef = ref(database, 'messages');
-    const unsubscribe = onValue(messagesRef, (snapshot) => {
-      const data = snapshot.val();
-      const loadedMessages: Message[] = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-      loadedMessages.sort((a, b) => b.createdAt - a.createdAt);
-      setMessages(loadedMessages);
+    const messagesQuery = query(messagesRef, orderByChild('createdAt'));
+    
+    const unsubscribe = onValue(messagesQuery, (snapshot) => {
+      const loadedMessages: Message[] = [];
+       snapshot.forEach((childSnapshot) => {
+        loadedMessages.push({ id: childSnapshot.key!, ...childSnapshot.val() });
+      });
+      setMessages(loadedMessages.reverse());
       setLoading(false);
     }, (error) => {
         console.error("Firebase read failed:", error);

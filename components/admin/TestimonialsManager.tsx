@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { ref, onValue, push, remove } from 'firebase/database';
-import { database } from '../../firebase';
+import { firestore, firebase } from '../../firebase'; // Import firebase for timestamp
 
 interface Testimonial {
   id: string;
   name: string;
   company: string;
   text: string;
+  createdAt: { // Firestore timestamp type
+    seconds: number;
+    nanoseconds: number;
+  } | null;
 }
 
 const TestimonialsManager: React.FC = () => {
@@ -19,11 +22,14 @@ const TestimonialsManager: React.FC = () => {
   const [testimonialToDelete, setTestimonialToDelete] = useState<Testimonial | null>(null);
 
   useEffect(() => {
-    const testimonialsRef = ref(database, 'testimonials');
-    const unsubscribe = onValue(testimonialsRef, (snapshot) => {
-      const data = snapshot.val();
-      const loadedTestimonials: Testimonial[] = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-      setTestimonials(loadedTestimonials.reverse());
+    const testimonialsCollection = firestore.collection('testimonials').orderBy('createdAt', 'desc');
+    
+    const unsubscribe = testimonialsCollection.onSnapshot((snapshot) => {
+      const loadedTestimonials = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+      })) as Testimonial[];
+      setTestimonials(loadedTestimonials);
     });
     return () => unsubscribe();
   }, []);
@@ -33,8 +39,13 @@ const TestimonialsManager: React.FC = () => {
     if (!name || !text) return;
     
     try {
-      const testimonialsRef = ref(database, 'testimonials');
-      await push(testimonialsRef, { name, company, text });
+      const testimonialsCollection = firestore.collection('testimonials');
+      await testimonialsCollection.add({ 
+        name, 
+        company, 
+        text, 
+        createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+      });
       
       setName('');
       setCompany('');
@@ -60,8 +71,8 @@ const TestimonialsManager: React.FC = () => {
     if (!testimonialToDelete) return;
 
     try {
-      const testimonialRef = ref(database, `testimonials/${testimonialToDelete.id}`);
-      await remove(testimonialRef);
+      const testimonialDoc = firestore.collection('testimonials').doc(testimonialToDelete.id);
+      await testimonialDoc.delete();
       
       setSuccessMessage('Testemunho deletado com sucesso!');
       setTimeout(() => setSuccessMessage(''), 3000);
